@@ -100,7 +100,9 @@
   </div>
 
   <script>
-    function carregarResultado() {
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbxLX2zj_ep1T4p44Xn9C1YECLxNwlTyKhN3L5cRXXZj0K-incPoNODxCN_uv0QoKFBAEA/exec';
+
+    function carregarResultadoLocal() {
       const nome = localStorage.getItem('nomeParticipante') || 'Participante';
       const acertos = parseInt(localStorage.getItem('respostasCorretas')) || 0;
       const tempoInicio = parseInt(localStorage.getItem('tempoInicio'));
@@ -111,40 +113,60 @@
       document.getElementById('acertos').textContent = acertos;
       document.getElementById('tempo').textContent = tempoGasto;
 
-      // Atualizar ranking no localStorage
-      let ranking = JSON.parse(localStorage.getItem('ranking')) || [];
+      return { nome, acertos, tempoGasto };
+    }
 
-      // Adicionar resultado atual
-      ranking.push({
+    async function salvarResultadoOnline(nome, acertos, tempo) {
+      const params = new URLSearchParams({
         nome: nome,
-        acertos: acertos,
-        tempo: tempoGasto
+        pontuacao: acertos,
+        tempo: tempo
       });
 
-      // Ordenar ranking: primeiro por acertos desc, depois tempo asc
-      ranking.sort((a, b) => {
-        if (b.acertos !== a.acertos) {
-          return b.acertos - a.acertos;
+      try {
+        const response = await fetch(`${scriptUrl}?${params.toString()}`);
+        const data = await response.json();
+        if(data.status !== 'ok') {
+          console.error('Erro ao salvar resultado:', data.message);
         }
-        return a.tempo - b.tempo;
-      });
+        return data;
+      } catch (error) {
+        console.error('Erro ao salvar resultado online:', error);
+      }
+    }
 
-      // Salvar ranking atualizado
-      localStorage.setItem('ranking', JSON.stringify(ranking));
+    async function carregarRankingOnline() {
+      const url = `${scriptUrl}?action=getAll`;
 
-      // Mostrar ranking na tabela
-      const tbody = document.getElementById('rankingBody');
-      tbody.innerHTML = '';
-      ranking.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${item.nome}</td>
-          <td>${item.acertos}</td>
-          <td>${item.tempo}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      try {
+        const response = await fetch(url);
+        const ranking = await response.json();
+
+        // Ordenar ranking: acertos desc, tempo asc
+        ranking.sort((a, b) => {
+          if (b.pontuacao !== a.pontuacao) {
+            return b.pontuacao - a.pontuacao;
+          }
+          return a.tempo - b.tempo;
+        });
+
+        // Mostrar ranking na tabela
+        const tbody = document.getElementById('rankingBody');
+        tbody.innerHTML = '';
+
+        ranking.forEach((item, index) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${item.nome}</td>
+            <td>${item.pontuacao}</td>
+            <td>${item.tempo}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error('Erro ao carregar ranking online:', error);
+      }
     }
 
     function limparQuiz() {
@@ -153,14 +175,18 @@
         localStorage.removeItem('nomeParticipante');
         localStorage.removeItem('respostasCorretas');
         localStorage.removeItem('tempoInicio');
-        localStorage.removeItem('ranking');
+        // Não limpamos ranking online aqui porque é armazenado no Google Sheets
         window.location.href = 'index.html';
       } else {
         alert('Senha incorreta! Quiz não foi limpo.');
       }
     }
 
-    window.onload = carregarResultado;
+    window.onload = async () => {
+      const resultado = carregarResultadoLocal();
+      await salvarResultadoOnline(resultado.nome, resultado.acertos, resultado.tempoGasto);
+      await carregarRankingOnline();
+    };
   </script>
 </body>
 </html>

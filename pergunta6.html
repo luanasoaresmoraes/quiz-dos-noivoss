@@ -57,14 +57,14 @@
 </head>
 <body>
   <div class="container">
-    <h2>6. Estilo de filme preferido do noivo?</h2>
-    <button onclick="verificarResposta('a')">a) Comédia</button>
-    <button onclick="verificarResposta('b')">b) Terror</button>
+    <h2>6. Qual a combinação favorita do noivo?</h2>
+    <button onclick="verificarResposta('a')">a) Whisky e música eletrônica</button>
+    <button onclick="verificarResposta('b')">b) Cerveja e música sertaneja</button>
   </div>
 
   <script>
     function verificarResposta(resposta) {
-      if (resposta === 'b') {
+      if (resposta === 'a') {
         let acertos = parseInt(localStorage.getItem('respostasCorretas')) || 0;
         localStorage.setItem('respostasCorretas', acertos + 1);
       }
